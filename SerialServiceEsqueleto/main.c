@@ -1,3 +1,9 @@
+//*****************************
+//****** TP2 SOPG *************
+//*****************************
+
+
+//******* Definición de constantes ********
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +17,7 @@
 #include <signal.h>
 
 //******* Definición de constantes ********
-#define SERIAL_PORT	3 // depende del puerto en la placa
+#define SERIAL_PORT	2 // depende del puerto en la placa
 #define SERIAL_BAUDRATE 115200
 #define BUFFER_SIZE 10
 
@@ -21,10 +27,10 @@
 //#define MSG_S_SEND_SIZE strlen(MSG_S_SEND_MODEL)
 #define MSG_S_RECEIVE_SIZE 10
 //#define MSG_S_RECEIVE_SIZE strlen(MSG_S_RECEIVE_MODEL)
+#define UWAIT	100000	//10 ms
 
 #define TCP_PORT	10000
 #define ADDR_IP		"127.0.0.1"
-
 
 //*********** Variablos globales ***********
 char Buffer[BUFFER_SIZE];
@@ -45,8 +51,7 @@ int newfd;
 int s;
 
 
-
-// ***********Threads ***************** 
+// *********** ***************** 
 void* start_tcp(void* message)
 {
 	while(1){
@@ -67,7 +72,7 @@ void* start_tcp(void* message)
 			// exit(1);
 		}
 		
-		buffer_tx[ret]=0;
+		buffer_tx[ret2]=0;
 
 		if(ret2==BUFFER_SIZE){
 			serial_send(buffer_tx,ret2);
@@ -83,7 +88,7 @@ void* start_tcp(void* message)
 				printf("%d bytes recibidos del socket %s\n",ret2,buffer_tx);
 			}
 		}
-		printf("Hubo un problema en al conexión\n");
+		printf("Error la conexión\n");
 		close(newfd);
 	}
 }
