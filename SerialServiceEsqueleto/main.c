@@ -137,10 +137,10 @@ printf("Inicio Serial Service\r\n");
         exit(1);
     }
 
-	// Configuracio de señales 
+	// Configuracion de señales 
     struct sigaction sa;
     sa.sa_handler = signal_receive;
-    sa.sa_flags =0; 					//SA_RESTART;
+    sa.sa_flags =0; 			//SA_RESTART;
     sigemptyset(&sa.sa_mask);
     if(sigaction(SIGINT,&sa,NULL)==-1){
 		perror("Error de sigaction: SIGINT");
@@ -190,20 +190,22 @@ printf("Inicio Serial Service\r\n");
 	unBlockSign(); // reestablece la mascara de señales 
 
 	while(1){
+		
 		if((len_data=serial_receive(data_receive,MSG_S_RECEIVE_SIZE))!=0){
 			printf("Se recibieron %d bytes: %s",len_data,data_receive);
 			strcpy(buffer_rx,data_receive);
-			// Se envia mensaje a cliente
 			// printf("test %s ",buffer_rx);
+			// Se envia mensaje a cliente
     		if (write (newfd, buffer_rx, MSG_S_RECEIVE_SIZE) == -1){
       			perror("Error escribiendo mensaje en socket");
       			exit (1);
     		}
 		}
 		usleep(UWAIT); // espera 10ms
-		if(EOP==1){
+
+		if(EOP==1){ // flag de señal de cierre ordenado
 			printf("\n fin del programa \n");
-			// Se cierran las conexiones
+			// Se cierran todas las conexiones
     		close(newfd);
     		close(s);			
 			serial_close();
@@ -232,19 +234,6 @@ printf("Inicio Serial Service\r\n");
 //     }
 
 
-// 	// Cargamos datos de direccion de server
-//     	bzero((char *) &serveraddr, sizeof(serveraddr));
-//     	serveraddr.sin_family = AF_INET;
-//     	serveraddr.sin_port = htons(4096);
-//     	//serveraddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-//     	if(inet_pton(AF_INET, ADDR_IP, &(serveraddr.sin_addr))<=0)
-//     	{
-//         	fprintf(stderr,"ERROR servidor invalido IP\r\n");
-//         	return 1;
-//     	}
-
-
-
 // 	printf("Inicio Serial Service\r\n");
 // 	printf("prende LED1 \r\n");
 // 	serial_send(">OUT:1,1\r\n" ,BUFFER_SIZE);
@@ -270,7 +259,6 @@ printf("Inicio Serial Service\r\n");
 // 			printf("se recibio %s\n",  Buffer2);
 // 			ret=0;//strcpy(Buffer2,"");
 // 		}
-		
 		
 
 // 	} // fin while
