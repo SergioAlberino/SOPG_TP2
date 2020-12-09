@@ -15,6 +15,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdbool.h>
 
 //************** Definiciones *************
 #define SERIAL_PORT	1 // depende del puerto en la placa
@@ -40,6 +41,7 @@ char Buffer2[BUFFER_SIZE];
 int ret;
 int ret2;
 
+
 pthread_t h_thread,h_thread1;
 volatile sig_atomic_t EOP;
 
@@ -53,6 +55,8 @@ char data_receive[MSG_S_RECEIVE_SIZE];
 int len_data;
 int newfd;
 int s;
+int mask;
+bool active_conection=false;
 
 
 // **************************** 
@@ -66,7 +70,7 @@ void* newTCP(void* message)
 	 		perror("Error en accept");
 	   		exit(1);
 		}
-
+		
 		char ipClient[32];
 		inet_ntop(AF_INET, &(clientaddr.sin_addr), ipClient, sizeof(ipClient));
 		printf  ("Server:  %s\n",ipClient);
@@ -75,14 +79,11 @@ void* newTCP(void* message)
 			perror("Error leyendo mensaje del socket");
 			// exit(1);
 		}
+		active_conection=true;
 		
 		buffer_tx[ret2]=0x00;
-
-		if(ret2 == MSG_S_RECEIVE_SIZE){
-			serial_send(buffer_tx,ret2);
-			printf("%d bytes recibidos del socket %s\n",ret,buffer_tx);
-		}
-
+		ret2 == MSG_S_RECEIVE_SIZE;
+		
 		while(ret2!=-1 && ret2!=0){
 			ret2 = read(newfd,buffer_tx,128);
 			if(ret2==MSG_S_RECEIVE_SIZE){
@@ -111,16 +112,23 @@ void blockSign(void)
     sigemptyset(&set);
     sigaddset(&set, SIGINT);
     sigaddset(&set, SIGTERM);
-    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    mask = pthread_sigmask(SIG_BLOCK, &set, NULL);
+	if (mask != 0){
+		printf("Error al enmascarar \n");
+        exit(1);
+	}
 }
-
 void unBlockSign(void)
 {
     sigset_t set;
     sigemptyset(&set);
     sigaddset(&set, SIGINT);
     sigaddset(&set, SIGTERM);
-    pthread_sigmask(SIG_UNBLOCK, &set, NULL);
+    mask = pthread_sigmask(SIG_UNBLOCK, &set, NULL);
+	if (mask != 0){
+		printf("Error al enmascarar \n");
+        exit(1);
+	}
 }
 
 // ***************************************************************+
@@ -186,7 +194,12 @@ printf("Inicio Serial Service\r\n");
 		return -1;
 	}
 	// detached del newTCP
-	pthread_detach(h_thread);
+	ret = pthread_detach(h_thread);
+	if (ret != 0){
+		printf("Error de detach \n");
+        exit(1);
+	}
+
 	unBlockSign(); // reestablece la mascara de señales 
 
 	while(1){
@@ -195,11 +208,18 @@ printf("Inicio Serial Service\r\n");
 			printf("Se recibieron %d bytes: %s",len_data,data_receive);
 			strcpy(buffer_rx,data_receive);
 			// printf("test %s ",buffer_rx);
+			
 			// Se envia mensaje a cliente
-    		if (write (newfd, buffer_rx, MSG_S_RECEIVE_SIZE) == -1){
-      			perror("Error escribiendo mensaje en socket");
-      			exit (1);
-    		}
+		if (active_conection==false){
+			// si no hay conexion activa no escribe newfd
+			printf("No hay conexion activa - no se enviara \r\n");
+			}
+			else{
+				if (write (newfd, buffer_rx, MSG_S_RECEIVE_SIZE)==-1){
+					perror("Error escribiendo mensaje en socket");
+					exit (1);
+				}
+			}
 		}
 		usleep(UWAIT); // espera 10ms
 
