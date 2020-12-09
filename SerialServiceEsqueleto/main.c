@@ -44,6 +44,7 @@ int ret2;
 
 pthread_t h_thread,h_thread1;
 volatile sig_atomic_t EOP;
+pthread_mutex_t mutexData = PTHREAD_MUTEX_INITIALIZER;
 
 socklen_t addr_len;
 struct sockaddr_in clientaddr;
@@ -75,14 +76,17 @@ void* newTCP(void* message)
 		inet_ntop(AF_INET, &(clientaddr.sin_addr), ipClient, sizeof(ipClient));
 		printf  ("Server:  %s\n",ipClient);
 
-		if( (ret2 = read(newfd,buffer_tx,128)) == -1 ){
-			perror("Error leyendo mensaje del socket");
-			// exit(1);
-		}
+		// if( (ret2 = read(newfd,buffer_tx,128)) == -1 ){
+		// 	perror("Error leyendo mensaje del socket");
+		// 	// exit(1);
+		// }
+
+		pthread_mutex_lock(&mutexData);
 		active_conection=true;
-		
+		pthread_mutex_unlock(&mutexData);
+
 		buffer_tx[ret2]=0x00;
-		ret2 == MSG_S_RECEIVE_SIZE;
+		ret2 = MSG_S_RECEIVE_SIZE;
 		
 		while(ret2!=-1 && ret2!=0){
 			ret2 = read(newfd,buffer_tx,128);
@@ -94,6 +98,9 @@ void* newTCP(void* message)
 			}
 		}
 		printf("Error la conexión\n");
+		pthread_mutex_lock(&mutexData);
+		active_conection=false; // si se desconectò pasa el flag a false
+		pthread_mutex_unlock(&mutexData);
 		close(newfd);
 	}
 }
@@ -210,6 +217,7 @@ printf("Inicio Serial Service\r\n");
 			// printf("test %s ",buffer_rx);
 			
 			// Se envia mensaje a cliente
+		pthread_mutex_lock(&mutexData);
 		if (active_conection==false){
 			// si no hay conexion activa no escribe newfd
 			printf("No hay conexion activa - no se enviara \r\n");
@@ -221,13 +229,18 @@ printf("Inicio Serial Service\r\n");
 				}
 			}
 		}
+		pthread_mutex_unlock(&mutexData);
+
 		usleep(UWAIT); // espera 10ms
 
 		if(EOP==1){ // flag de señal de cierre ordenado
 			printf("\n fin del programa \n");
 			// Se cierran todas las conexiones
-    		close(newfd);
-    		close(s);			
+			if (active_conection==true){
+    			close(newfd); 	// si està conectado se cierra
+			}
+    		close(s);	
+			pthread_cancel(h_thread);		
 			serial_close();
 			return 0;
 		}	
